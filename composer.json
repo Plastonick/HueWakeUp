@@ -1,0 +1,9 @@
+{
+    "require": {
+        "monolog/monolog": "1.0.*",
+        "sqmk/phue": "^1.7",
+        "cmfcmf/openweathermap-php-api": "^2.4",
+        "jc21/plex-api": "^1.2",
+        "vlucas/phpdotenv": "^3.4"
+    }
+}
