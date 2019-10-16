@@ -118,7 +118,11 @@ function generateIncreasingLightLevels(int $period): Generator
     }
 }
 
+$originalColours = [];
+
 foreach ($bedroomLights as $light) {
+    $originalColours[$light->getId()] = $light->getRGB();
+
     $light->setOn(true);
     if ($light->getName() === 'Drawers') {
         $rgb = getRgbForForecast($forecast);
@@ -127,6 +131,7 @@ foreach ($bedroomLights as $light) {
         $light->setRGB(...$wakeupColor);
     }
 }
+
 
 try {
     foreach (generateIncreasingLightLevels(1800) as $lightLevel) {
@@ -143,5 +148,9 @@ try {
 sleep(3600);
 
 foreach ($bedroomLights as $bedroomLight) {
+    if (isset($originalColours[$bedroomLight->getId()])) {
+        $bedroomLight->setRGB(...$originalColours[$bedroomLight->getId()]);
+    }
+
     $bedroomLight->setOn(false);
 }
