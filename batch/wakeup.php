@@ -7,6 +7,7 @@ use Dotenv\Dotenv;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Monolog\Processor\PsrLogMessageProcessor;
 use Phue\Client;
 use Phue\Light;
 use Phue\Transport\Exception\DeviceParameterUnmodifiableException;
@@ -19,6 +20,7 @@ $dotEnv->load();
 $logger = new Logger('WakeUp');
 $logger->pushHandler(new RotatingFileHandler('/var/log/home/wakeup'));
 $logger->pushHandler(new StreamHandler('php://stderr'));
+$logger->pushProcessor(new PsrLogMessageProcessor());
 $client = new Client(getenv('HUE_IP'), getenv('HUE_USERNAME'));
 
 /**
@@ -110,9 +112,10 @@ $bedroomLights = getBedroomLights($client);
  */
 function generateIncreasingLightLevels(int $period): Generator
 {
-    $microsecondSleep = (1000000 / 255) * $period;
+    $numberOfChanges = 255;
+    $microsecondSleep = (1000000 / $numberOfChanges) * $period;
 
-    for ($i = 0; $i <= 255; $i++) {
+    for ($i = 0; $i <= $numberOfChanges; $i++) {
         yield $i;
         usleep($microsecondSleep);
     }
@@ -120,10 +123,14 @@ function generateIncreasingLightLevels(int $period): Generator
 
 $originalColours = [];
 
+sleep(1);
+
 foreach ($bedroomLights as $light) {
+    $light->setOn(true);
     $originalColours[$light->getId()] = $light->getRGB();
 
-    $light->setOn(true);
+    $logger->info('Original colour', ['lightName' => $light->getName(), 'rgb' => $light->getRGB()]);
+
     if ($light->getName() === 'Drawers') {
         $rgb = getRgbForForecast($forecast);
         $light->setRGB(...$rgb);
@@ -149,7 +156,13 @@ sleep(3600);
 
 foreach ($bedroomLights as $bedroomLight) {
     if (isset($originalColours[$bedroomLight->getId()])) {
-        $bedroomLight->setRGB(...$originalColours[$bedroomLight->getId()]);
+        $originalColour = $originalColours[$bedroomLight->getId()];
+
+        $logger->info(
+            'Resetting original colour',
+            ['lightName' => $bedroomLight->getName(), 'colour' => $originalColour]
+        );
+        $bedroomLight->setRGB($originalColour['red'], $originalColour['green'], $originalColour['blue']);
     }
 
     $bedroomLight->setOn(false);
